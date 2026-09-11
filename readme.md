@@ -1,44 +1,59 @@
-# Role & Objective
-You are an expert mobile UI/UX engineer specializing in high-performance web applications. Build a lightweight, single-page application (SPA) optimized for single-handed use on mobile browsers during grocery shopping trips.
+# Smart Grocery & Cart Compare (CRC Mobile PWA)
 
-# Technology Stack Preference
-Target implementation MUST use one of the following approaches:
-1. **Primary Option — React PWA:** Built with React, Vite, and Tailwind CSS. Must include a Web Manifest and Service Worker configuration for full offline Progressive Web App functionality and installation on home screens. Use `framer-motion` or `@use-gesture/react` for touch/swipe mechanics.
-2. **Alternative Option — Flutter Web:** Built using Flutter for Web using `flutter_slidable` for swipe interactions, `provider` or `riverpod` for local state, and `shared_preferences` for web persistence.
+A high-performance, single-page Progressive Web Application (PWA) optimized for single-handed use on mobile browsers during grocery shopping trips in Costa Rica (CRC / ₡).
 
-# Core Requirements & Architectural Specifications
+---
 
-## 1. Local Persistence (Zero-Backend)
-- Persist all active shopping lists, unit comparison states, and active cart setups in Browser `localStorage` (React) or `shared_preferences` (Flutter).
-- Data MUST survive accidental tab closes or browser page reloads.
-- Provide a "Clear Trip" button protected by an explicit confirmation dialog ("Are you sure you want to reset all carts?").
+## 📋 Role & Objective
+An expert mobile UI/UX web application designed for fast, frictionless shopping. Features zero-backend local persistence, a touch-first layout, a dynamic unit/deal comparison engine, and full offline functionality.
 
-## 2. Multi-Cart Architecture (1 or 2 Carts)
-- Support a maximum of 2 active carts simultaneously (e.g., "Main Grocery" vs. "Office/Work").
-- Fast navigation between carts via top-level Tabs or horizontal Swipe gestures.
-- Display individual Cart Totals pinned at the bottom, alongside a dynamic "Grand Total" across both active carts.
+---
 
-## 3. Cart Row Design & Touch Gesture Rules
-- Quick-add button (+) appends a new item row to the current active cart.
-- **Row Columns Layout:** 
-  1. Quantity (numeric input with prominent + / - stepper buttons)
-  2. Unit Price / Amount (numeric input with `inputmode="decimal"`)
-  3. Row Total (`Quantity * Amount`, computed automatically)
-  4. Description / Item Name (text input)
-- **Soft-Delete Mechanism (Swipe / Delete Tap):** Swiping a row left or tapping the row delete action must set `quantity = 0` instead of removing the row array item. This keeps the item line intact so the user can easily re-increment it without re-typing.
-- **Cashier Flag / Discount Star:** Swipe right or tap a Star icon on any row to toggle an "Attention Needed at Checkout" visual highlight.
+## 🛠️ Technology Stack
+* **Framework:** React + Vite
+* **Styling:** Tailwind CSS (Mobile-first layout)
+* **Touch/Swipe Mechanics:** Framer Motion / Native Touch Events
+* **PWA & Offline Support:** Web Manifest + Service Worker
+* **Persistence:** Browser `localStorage` (Zero-backend required)
 
-## 4. On-the-Fly Unit & Promo Comparison Engine
-Include a slide-up drawer or modal comparison tool (Option A vs. Option B) capable of calculating true value and adding the winning item directly into the current active cart.
+---
 
-- **Scenario 1: Bulk vs. Single Pack Comparison**
-  - Compare pack costs against single items (e.g., 6-pack at 2000 CRC / 960g total vs. 1 single can at 310 CRC).
-- **Scenario 2: Cross-Unit Weight/Volume Normalization**
-  - Convert mixed unit measurements (e.g., a 2kg bag at 1800 CRC vs. an 800g bag at 950 CRC).
-  - Compute target target quantities required to match (e.g., "You need 2.5 bags of 800g to equal 2kg, costing 2375 CRC, which is X% more expensive").
-- **Supported Base Units:** Units, Grams (g), Kilograms (kg), Milliliters (ml), Liters (l), Gallons.
-- **Winner Action:** Highlight the most economical option and provide an "Add Winner to Cart" button that automatically creates an entry row in the selected cart.
+## 🚀 Core Features & Architectural Specifications
 
-# UI/UX Guardrails
-- **Touch-First Guidelines:** Minimum touch target height of 48px across all buttons and input fields.
-- **Keyboard Handling:** Prevent mobile soft-keyboards from obscuring bottom navigation, pinned totals, or drawer action buttons.
+### 1. Local Persistence (Zero-Backend)
+* Automatically persists all active shopping lists, custom cart structures, and unit comparison states in `localStorage`.
+* Prevents data loss during accidental tab closes, browser page reloads, or cellular connectivity drops.
+* **Reset All:** Features a top-level confirmation dialog to clear all active carts cleanly when starting a new trip.
+
+### 2. Multi-Cart Architecture (1 or 2 Carts)
+* **Single-Cart Default:** Defaults to 1 active cart ("Main Grocery") for maximum simplicity, with an option to toggle a 2nd Cart ("Office/Work").
+* **Fast Navigation:** Top-level tabs allow quick switching and horizontal swipe navigation between active carts.
+* **Summary Row:** Displays item count and active cart totals pinned at the bottom action bar.
+
+### 3. Cart Row Design & Touch Gesture Rules
+* **Compact Layout:** Optimized row heights with clean placeholder input fields to save screen space.
+* **Columns Layout:**
+  1. **Quantity:** Numeric input (stepper control locked between **1** and **25**).
+  2. **Unit Price (₡):** Numeric input (`inputmode="decimal"`) clamped between **10 ₡** and **25,000 ₡**. Direct typing allows complete backspacing/wipe without intrusive auto-formatting before blur.
+  3. **Row Total:** Automatically computed (`Quantity × Amount`).
+  4. **Description / Item Name:** Starts blank with an `"Item name..."` placeholder for typing without text deletion.
+* **Direct Hard-Delete:** Swiping left or tapping the delete action immediately removes the item row.
+* **Cashier Flag / Discount Star:** Tap the Star icon or swipe right on any row to toggle an "Attention Needed at Checkout" visual highlight.
+* **Flagged Quick Filter:** Top-header button to filter only flagged/starred items instantly.
+
+### 4. On-the-Fly Unit & Promo Comparison Engine
+Slide-up modal tool (Option A vs. Option B) for calculating true cost-per-unit value and automatically pushing the winning item into the active cart.
+
+* **Layout Consistency:** Uses identical column ordering as the main cart (Qty/Size, Price, Base Unit).
+* **Price & Quantity Rules:** Shares the same validation constraints (**1 to 25** quantity, **10 ₡ to 25,000 ₡** price).
+* **Scenario 1 — Bulk vs. Single Pack:** Compare total pack costs against single items (e.g., 6-pack vs. single unit).
+* **Scenario 2 — Cross-Unit Weight/Volume Normalization:** Converts mixed measurements (e.g., 2kg bag at ₡1,800 vs. 800g bag at ₡950) to reveal true relative savings.
+* **Supported Units:** Units, Grams (g), Kilograms (kg), Milliliters (ml), Liters (l), Gallons.
+* **Winner Action:** Highlights the economical choice with an **"Add Winner to Cart"** action.
+
+---
+
+## 📱 UI/UX & Mobile Guardrails
+* **Touch-First Guidelines:** Minimum touch target height of 48px across all stepper buttons, stars, and controls.
+* **Compact Bottom Bar:** Slim sticky bottom action bar containing "+ Add New Item Row", "Compare Deals", and Cart Totals.
+* **Keyboard Handling:** Avoids viewport shifts or obscured inputs when the mobile soft keyboard appears.
