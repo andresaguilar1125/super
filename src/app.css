@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/inter';
+@import '$lib/fonts.css';
 
 /*
  * Dark mode is class-driven (`.dark` on <html>). Tailwind v4 requires this to

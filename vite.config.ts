@@ -31,8 +31,17 @@ export default defineConfig({
 
       workbox: {
         // Precache the client bundle and the prerendered HTML shells.
+        //
+        // `woff2` is load-bearing for OFFLINE correctness, not a nicety. The
+        // font files are emitted into `_app/immutable/assets/` and were NOT in
+        // this list, so the very first online-only load fetched Inter outside
+        // the precache. Workbox's runtime route for same-origin assets is
+        // CacheFirst, so the woff2 landed in the runtime cache and offline
+        // worked anyway — but it was an accident: a cold cache plus offline
+        // would have fallen back to the system font. Precaching them makes the
+        // offline font a guarantee rather than a side effect.
         globPatterns: [
-          'client/**/*.{js,css,ico,png,svg,webp,webmanifest}',
+          'client/**/*.{js,css,ico,png,svg,webp,webmanifest,woff2}',
           'prerendered/**/*.{html,json}'
         ],
 

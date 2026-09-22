@@ -7,6 +7,24 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
 		<!--
+			Title + description. SvelteKit prerenders every route but injects no
+			document metadata of its own, so without these the whole app renders an
+			untitled document — which fails Lighthouse's `document-title` audit in
+			BOTH the accessibility and SEO categories (7 and 1 points of weight
+			respectively), and is what a browser tab, a bookmark or a search result
+			would otherwise fall back to the URL for.
+
+			`lang="en"` above is deliberate even though the data and currency are
+			Costa Rican: the UI copy is English, and `lang` describes the content, not
+			the locale. It also keeps the font stack on the `latin` subsets.
+		-->
+		<title>SuperCalc — Grocery Price Calculator (₡ CRC)</title>
+		<meta
+			name="description"
+			content="Fast, offline-ready grocery price calculator for Costa Rica. Add item prices as you shop, track a running colón total, break it down by category, and compare unit prices between single items and multipacks."
+		/>
+
+		<!--
 			Two theme-color tags so browser chrome matches whichever scheme the OS
 			reports. The values mirror the app's zinc surfaces.
 		-->

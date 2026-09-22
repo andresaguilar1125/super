@@ -96,8 +96,11 @@ The app is a genuinely installable Progressive Web App — not just a home-scree
 shortcut.
 
 - A **Workbox service worker** is generated at build time by
-  `@vite-pwa/sveltekit`. It precaches the client bundle (JS, CSS, fonts, icons)
-  and every prerendered HTML page — 32 entries in a typical build.
+  `@vite-pwa/sveltekit`. It precaches the client bundle (JS, CSS, **fonts**, icons)
+  and every prerendered HTML page — 34 entries in a typical build. The two woff2
+  files are matched by the `globPatterns` in `vite.config.ts`; leaving them out
+  still worked offline (same-origin assets fall through to a CacheFirst runtime
+  route) but made the offline font a side effect rather than a guarantee.
 - **It works offline.** Every route is precached, so the app shell loads and
   navigation works with the network completely down. The tape, settings, theme,
   and accent all live in `localStorage`, so no data is lost either.
@@ -122,6 +125,32 @@ npm run build && npm run preview
 Then load the app, and in DevTools check **Application → Service Workers** shows
 `sw.js` as *activated*. Ticking **Offline** in the Network tab and reloading
 should still render the full app.
+
+### Performance notes
+
+Audited with Lighthouse 12 (mobile, `--throttling-method=devtools`). Scores:
+**Performance 98, Accessibility 100, Best Practices 100, SEO 100.**
+
+Two things are worth knowing before optimising further:
+
+- **`--throttling-method=simulate` is not trustworthy on this app.** Repeat runs
+  of an unchanged build returned FCP anywhere from 987 ms to 2411 ms, and
+  blocking a resource sometimes *improved* the score — which is causally
+  impossible. Use `devtools` (real throttling) for A/B comparisons; the three
+  devtools runs above land within 20 ms of each other.
+- **The CSS is deliberately left as an external stylesheet.** SvelteKit's
+  `kit.inlineStyleThreshold` does remove the render-blocking request (a real
+  ~150 ms win), but it also rewrites the `@font-face` `url()`s to `./name.woff2`,
+  which resolve relative to the *document* and 404 under the GitHub Pages
+  sub-path (`/super/calculator` → `/super/inter-latin-*.woff2`). `paths.relative:
+  true` does not correct it. The audit still reported Performance 100 in that
+  state — artificially, because the fonts had failed to load and the fallback
+  was being measured. Don't enable it without re-verifying that both
+  `@font-face` URLs still return 200 *and* that the two files are in the
+  precache manifest.
+
+The one remaining Lighthouse opportunity is the render-blocking CSS request
+(~150 ms). It only pays off if the font-URL problem above is solved.
 
 ---
 
@@ -323,7 +352,7 @@ of the accent.
 | Adapter | **`@sveltejs/adapter-static`** | Prerenders to `build/`; `fallback: '404.html'` |
 | PWA | **`@vite-pwa/sveltekit`** | Workbox service worker + offline precache |
 | Utilities | **`clsx`** + **`tailwind-merge`** | composed as `cn()` in `src/lib/cn.ts` |
-| Font | **Inter Variable** | self-hosted via `@fontsource-variable/inter` |
+| Font | **Inter Variable** | self-hosted; only `latin` + `latin-ext` are declared (see `src/lib/fonts.css`) |
 
 > **Tailwind v4 is CSS-first.** There is no `tailwind.config.js` and no
 > `postcss.config.js` in this project — both were removed. All theme
@@ -381,6 +410,7 @@ src/
 │   ├── accents.ts             # Accent palette — single source of truth
 │   ├── categories.ts          # Google Sheet ingestion, cache, and stores
 │   ├── cn.ts                  # clsx + tailwind-merge helper
+│   ├── fonts.css              # Inter Variable, latin + latin-ext only
 │   ├── models.ts              # TypeScript interfaces and union types
 │   ├── store.ts               # Global stores, actions, formatting, hydration
 │   ├── utils.ts               # Pure helpers (CSV, validation, rounding)
