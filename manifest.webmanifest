@@ -1,0 +1,33 @@
+{
+	"name": "SuperCalc CRC",
+	"short_name": "SuperCalc",
+	"description": "Mobile-first grocery calculator for quick price entry at the store.",
+	"start_url": "./calculator",
+	"scope": "./",
+	"display": "standalone",
+	"orientation": "portrait",
+	"lang": "es-CR",
+	"background_color": "#fafafa",
+	"theme_color": "#09090b",
+	"categories": ["shopping", "productivity", "utilities"],
+	"icons": [
+		{
+			"src": "./icons/icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "./icons/icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "./icons/icon-maskable-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		}
+	]
+}

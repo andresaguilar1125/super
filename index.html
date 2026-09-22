@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="./favicon.png" />
+		<link rel="manifest" href="./manifest.webmanifest" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+		<!--
+			Title + description. SvelteKit prerenders every route but injects no
+			document metadata of its own, so without these the whole app renders an
+			untitled document — which fails Lighthouse's `document-title` audit in
+			BOTH the accessibility and SEO categories (7 and 1 points of weight
+			respectively), and is what a browser tab, a bookmark or a search result
+			would otherwise fall back to the URL for.
+
+			`lang="en"` above is deliberate even though the data and currency are
+			Costa Rican: the UI copy is English, and `lang` describes the content, not
+			the locale. It also keeps the font stack on the `latin` subsets.
+		-->
+		<title>SuperCalc — Grocery Price Calculator (₡ CRC)</title>
+		<meta
+			name="description"
+			content="Fast, offline-ready grocery price calculator for Costa Rica. Add item prices as you shop, track a running colón total, break it down by category, and compare unit prices between single items and multipacks."
+		/>
+
+		<!--
+			Two theme-color tags so browser chrome matches whichever scheme the OS
+			reports. The values mirror the app's zinc surfaces.
+		-->
+		<meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<script>
+			/*
+			 * Runs before first paint to apply the persisted theme AND accent,
+			 * eliminating the flash of light UI (and of default-blue controls) that
+			 * occurred while the layout's onMount awaited hydration.
+			 * Must stay inline and synchronous.
+			 */
+			(function () {
+				try {
+					var root = document.documentElement;
+					var stored = localStorage.getItem('supercalc-theme');
+					var wantsDark =
+						stored === 'dark' ||
+						(!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
+					if (wantsDark) root.classList.add('dark');
+
+					/*
+					 * Same reasoning as the theme: the attribute has to exist before the
+					 * first paint or a saved accent flashes the default blue. The ids
+					 * must match ACCENTS in src/lib/accents.ts; an unknown value falls
+					 * through to the `:root` default — which is also what happens to
+					 * anyone still holding the removed 'gold', so they land on blue.
+					 */
+					var accents = ['blue', 'purple', 'pink', 'green', 'teal'];
+					var accent = localStorage.getItem('supercalc-accent');
+					root.dataset.accent = accents.indexOf(accent) !== -1 ? accent : 'blue';
+				} catch (e) {
+					/* Private mode / blocked storage — fall back to light + blue. */
+				}
+			})();
+		</script>
+
+		<link href="./_app/immutable/entry/start.BzT6mzKr.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/B8LuZHR4.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/OPkkAcBP.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/B4O7Yj67.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/BLMJf9Vq.js" rel="modulepreload">
+		<link href="./_app/immutable/entry/app.Dzo896Fj.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/C1FmrZbK.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/3cpyxNta.js" rel="modulepreload">
+		<link href="./_app/immutable/nodes/0.COOAajeo.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/DK19Q8mD.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/hbRC-EBR.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/q7rhgt59.js" rel="modulepreload">
+		<link href="./_app/immutable/nodes/2.3pqQbsiY.js" rel="modulepreload">
+		
+		<link href="./_app/immutable/assets/0.CeX_y3el.css" rel="stylesheet">
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">  <div class="min-h-screen bg-zinc-50 transition-colors dark:bg-zinc-950">   <header class="sticky top-0 z-20 h-(--spacing-header) border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"> <div class="relative mx-auto flex h-full max-w-2xl items-center justify-between px-4"> <a href="./" aria-label="Super home" title="Super" class="-ml-1 flex h-11 items-center gap-2 rounded-md px-1 text-zinc-900 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800"><svg class="h-6 w-6 text-zinc-700 dark:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"></path></svg> <span class="text-lg font-semibold tracking-tight" data-svelte-h="svelte-1fdsauw">Super</span></a>  <div class="flex items-center gap-1"><button type="button" aria-label="Toggle theme" title="Toggle theme"  class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg></button>  <a href="./settings" aria-label="Settings" title="Settings" class="-mr-3 inline-flex h-11 w-11 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100" data-svelte-h="svelte-18p3cn"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></a></div></div></header>  <div class="sticky top-(--spacing-header) z-10 h-(--spacing-totalbar) border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"><div class="mx-auto flex h-full max-w-2xl items-center justify-between px-4"> <button type="button" class="-ml-1 flex h-11 items-center gap-1 rounded-md px-1 text-xs font-medium uppercase tracking-wide text-zinc-500 transition-colors hover:text-zinc-900 disabled:opacity-50 disabled:hover:text-zinc-500 dark:text-zinc-400 dark:hover:text-zinc-100 dark:disabled:hover:text-zinc-400" aria-expanded="false" aria-controls="category-totals-sheet" disabled>Total
+					<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19.5 8.25-7.5 7.5-7.5-7.5"></path></svg></button> <span class="text-lg font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-100">₡0</span></div></div> <main class="px-4 py-4 max-w-2xl mx-auto"></main>   </div> 
+			
+			<script>
+				{
+					__sveltekit_19dn0wi = {
+						base: new URL(".", location).pathname.slice(0, -1),
+						assets: "/super"
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("./_app/immutable/entry/start.BzT6mzKr.js"),
+						import("./_app/immutable/entry/app.Dzo896Fj.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element, {
+							node_ids: [0, 2],
+							data: [null,null],
+							form: null,
+							error: null
+						});
+					});
+				}
+			</script>
+		</div>
+	</body>
+</html>
+
