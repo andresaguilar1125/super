@@ -53,7 +53,24 @@ export default defineConfig({
 
       kit: {
         // Must match the adapter's `fallback`.
-        adapterFallback: '404.html'
+        adapterFallback: '404.html',
+
+        /*
+         * The plugin builds its precache URLs from SvelteKit's `paths.base`, NOT
+         * from Vite's own `base` — verified by setting `base` and watching the
+         * root entry stay a bare "/".
+         *
+         * Without this the prerendered index page is precached as `{url: "/"}`,
+         * which on a project site resolves to the DOMAIN root, not `/<repo>/`.
+         * That 404s, Workbox's install fails, and the service worker never
+         * activates — the app still works online, so the failure is silent.
+         *
+         * The trailing slash matters too: `/<repo>` gets a 301 to `/<repo>/`,
+         * and a redirected response is not a valid precache entry.
+         *
+         * Falls back to "/" so a root-hosted local build keeps working.
+         */
+        base: process.env.BASE_PATH ? `${process.env.BASE_PATH}/` : '/'
       },
 
       devOptions: {

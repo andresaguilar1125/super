@@ -111,9 +111,9 @@ shortcut.
 - `static/manifest.webmanifest` declares `standalone` display, `portrait`
   orientation, theme colours, and three icons (two `any`, one `maskable`)
   across the standard 192px and 512px sizes.
-- Safe-area insets keep content clear of notches and the home indicator, and
+- Safe-area insets eep content clear of notches and the home indicator, and
   overscroll bounce is disabled so the page doesn't rubber-band.
-
+k
 **Testing offline:** a service worker is disabled in dev (`devOptions.enabled:
 false`) because caching localhost causes confusing stale-module behaviour. Test
 it properly with a production build:
@@ -390,6 +390,7 @@ Additional hosts are allow-listed in `vite.config.ts`.
 | `npm run dev` | Start the Vite dev server (service worker off) |
 | `npm run build` | Prerender + build the static site into `build/` |
 | `npm run preview` | Serve the production build, including the service worker |
+| `npm run deploy` | Build with `BASE_PATH=/super` and publish to the `gh-pages` branch |
 | `npm run check` | Type-check with `svelte-check` |
 | `npm run compress` | Bundle the source into `project-bundle.txt` |
 | `node scripts/generate-icons.mjs` | Regenerate the placeholder PWA icons |

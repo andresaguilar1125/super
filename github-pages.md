@@ -271,31 +271,31 @@ is expected. Always test PWA behaviour against `npm run build && npm run preview
 
 ## Alternative: publishing from a branch
 
-If you'd rather not use Actions, you can commit the build output to a branch.
-More manual and more error-prone, but it needs no workflow.
+If you'd rather not use Actions, you can publish the build output to a branch
+from your own machine. Needs no workflow — see
+[`github-pages-manual.md`](./github-pages-manual.md) for the full guide.
 
-```bash
-BASE_PATH=/super npm run build
-
-# .nojekyll is REQUIRED here: without it Jekyll strips the _app/ directory.
-touch build/.nojekyll
-
-git subtree push --prefix build origin gh-pages
-```
-
-Or with the `gh-pages` package:
+The short version:
 
 ```bash
 npm i -D gh-pages
-npx gh-pages -d build --dotfiles
+# package.json:
+#   "predeploy": "BASE_PATH=/super npm run build",
+#   "deploy": "gh-pages -d build --nojekyll"
+
+npm run deploy
 ```
 
-(`--dotfiles` is what carries `build/.nojekyll` across.)
-
 Then set **Settings → Pages → Source** to **Deploy from a branch**, branch
-`gh-pages`, folder `/ (root)`.
+`gh-pages`, folder `/ (root)` — and **disable this workflow**, because Pages
+publishes from exactly one source and a branch deploy is not the Actions one.
 
-**Why `.nojekyll` is mandatory here:** GitHub Pages runs Jekyll when publishing
+> **Do not use `git subtree push --prefix build origin gh-pages`.** `build/` is in
+> `.gitignore` and has never been committed, so `git subtree split` has no tree to
+> read and the command fails. Publish from the working tree with the `gh-pages`
+> CLI instead.
+
+**Why `--nojekyll` is mandatory here:** GitHub Pages runs Jekyll when publishing
 from a branch, and Jekyll ignores any file or folder whose name starts with an
 underscore. SvelteKit's entire client bundle lives in `_app/` — so without the
 marker you get HTML with no CSS and no JavaScript, and a blank page. This does

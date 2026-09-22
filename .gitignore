@@ -51,19 +51,32 @@ logs/
 .app_anima/
 .svelte-kit
 .vscode
-assets
 
-# Keep the deploy workflow tracked — `.github/` is ignored above, so the
-# workflows directory needs an explicit exception or Pages never runs.
-!.github/
-!.github/workflows/
+# Anchored on purpose. A bare `assets` matches at ANY depth, which also
+# swallowed `_app/immutable/assets/` — the built CSS and the two Inter woff2
+# files. That is invisible locally but breaks a `gh-pages` branch deploy, where
+# the publisher runs `git add .` and silently drops those files, leaving a live
+# site with no styles and no fonts. Only the repo-root `assets/` is meant here.
+/assets
+
 web/favicon.png
 compress-project.js
-package-lock.json
 # package.json
 # postcss.config.js
 # svelte.config.js
 # tailwing.config.js
 # tsconfig.json
 # vite.config.ts
+
+# `package-lock.json` is deliberately NOT ignored: CI installs with `npm ci`,
+# which requires a committed lockfile, and reproducible installs need it.
+# (Removing it from here is also what unblocked the deploy workflow, which
+# failed with "Dependencies lock file is not found".)
+
+# `.github/` is ignored by GitHub's own scaffold default, so the workflows dir
+# needs an explicit exception or Pages never runs. These negations must come
+# AFTER the ignore line below — later rules win, and a trailing bare `.github`
+# would silently re-ignore any NEW file added under `.github/workflows/`.
 .github
+!.github/
+!.github/workflows/
