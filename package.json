@@ -8,6 +8,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
+    "prepare": "svelte-kit sync",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "compress": "node compress-project.js",
     "seed": "node scripts/seed-dummy.mjs",
