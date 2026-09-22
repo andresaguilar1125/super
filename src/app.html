@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
+		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+		<!--
+			Two theme-color tags so browser chrome matches whichever scheme the OS
+			reports. The values mirror the app's zinc surfaces.
+		-->
+		<meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<script>
+			/*
+			 * Runs before first paint to apply the persisted theme AND accent,
+			 * eliminating the flash of light UI (and of default-blue controls) that
+			 * occurred while the layout's onMount awaited hydration.
+			 * Must stay inline and synchronous.
+			 */
+			(function () {
+				try {
+					var root = document.documentElement;
+					var stored = localStorage.getItem('supercalc-theme');
+					var wantsDark =
+						stored === 'dark' ||
+						(!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
+					if (wantsDark) root.classList.add('dark');
+
+					/*
+					 * Same reasoning as the theme: the attribute has to exist before the
+					 * first paint or a saved accent flashes the default blue. The ids
+					 * must match ACCENTS in src/lib/accents.ts; an unknown value falls
+					 * through to the `:root` default — which is also what happens to
+					 * anyone still holding the removed 'gold', so they land on blue.
+					 */
+					var accents = ['blue', 'purple', 'pink', 'green', 'teal'];
+					var accent = localStorage.getItem('supercalc-accent');
+					root.dataset.accent = accents.indexOf(accent) !== -1 ? accent : 'blue';
+				} catch (e) {
+					/* Private mode / blocked storage — fall back to light + blue. */
+				}
+			})();
+		</script>
+
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>
+
