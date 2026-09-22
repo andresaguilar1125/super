@@ -66,3 +66,4 @@ package-lock.json
 # tailwing.config.js
 # tsconfig.json
 # vite.config.ts
+.github
