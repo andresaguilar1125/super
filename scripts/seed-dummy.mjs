@@ -3,7 +3,7 @@
  * seed-dummy.mjs — emulates a shopper tapping random items into SuperCalc.
  *
  * Reads `scripts/data.csv`, draws a random set of distinct products, and types
- * each one into the running app through the REAL UI (price / qty / label fields
+ * each one into the running app through the REAL UI (price / units / label fields
  * and the `+ Add Item` button). Nothing is written to localStorage, the store,
  * or any source file — every row goes through the app's own validation,
  * rounding, label truncation, category resolution and persistence, exactly as a
@@ -47,7 +47,7 @@ const PROFILE_DIR = resolve(ROOT, '.seed-profile');
 function parseArgs(argv) {
 	const opts = {
 		count: 15,
-		url: 'http://localhost:4173',
+		url: 'http://localhost:5173',
 		base: '',
 		headless: false,
 		append: false,
@@ -195,7 +195,13 @@ function dedupeByDesc(rows) {
 
 // --- Money ------------------------------------------------------------------
 
-const colones = (n) => `₡${n.toLocaleString('en-US')}`;
+/*
+ * Console mirror of the app's money format: `es-CR` grouping (a no-break space),
+ * no decimals. Kept in step with `formatCurrency()` so the figures printed here
+ * are the same ones the script then reads back off the screen — and so a
+ * separator mismatch cannot masquerade as a failed verification.
+ */
+const colones = (n) => n.toLocaleString('es-CR', { maximumFractionDigits: 0 });
 
 /**
  * Mirror of `roundPrice()` in src/lib/utils.ts: the app rounds to the nearest
@@ -235,9 +241,9 @@ async function fillField(page, selector, value) {
  * Clicking also beats pressing Enter here: the same popup swallows Enter and
  * accepts an autocomplete suggestion instead of committing the row.
  */
-async function addItem(page, { price, qty, label }, timeout) {
+async function addItem(page, { price, units, label }, timeout) {
 	await fillField(page, '#price-input', price);
-	await fillField(page, '#qty-input', qty);
+	await fillField(page, '#units-input', units);
 	await fillField(page, '#label-input', label);
 	await page.locator('#label-input').blur();
 
@@ -247,25 +253,54 @@ async function addItem(page, { price, qty, label }, timeout) {
 
 /** Clear the tape using the app's own guarded two-tap reset. */
 async function resetTape(page, timeout) {
-	const reset = page.getByRole('button', { name: 'Reset all' });
+	// Labels are UPPERCASE to match the buttons (they were 'Reset all' and
+	// 'Tap again to confirm'). Keep these in sync if the copy changes: a stale
+	// name makes `count()` return 0, which this guard reads as "no button" and
+	// returns false — a SILENT no-op, not a failure.
+	const reset = page.getByRole('button', { name: 'RESET ALL' });
 	if ((await reset.count()) === 0) return false; // already empty — no button
 
 	await reset.click({ timeout });
 	// The button is REPLACED by the armed state, so re-locate it before the
 	// second tap. The armed state is a plain variable that expires in ~3s.
-	await page.getByRole('button', { name: 'Tap again to confirm' }).click({ timeout });
+	await page.getByRole('button', { name: 'CONFIRM' }).click({ timeout });
 	await page.waitForTimeout(200);
 	return true;
 }
 
+/*
+ * Matches the running total out of the page text.
+ *
+ * The amount is grouped with a NO-BREAK SPACE (U+00A0), not a comma — the app
+ * formats through `toLocaleString('es-CR')`, e.g. `34 560`. So the pattern has to
+ * accept `\u00A0` rather than `,`.
+ *
+ * The digit class is DELIBERATELY narrow — digits and U+00A0 only, never `\s`.
+ * `\s` matches a newline, and the text after the total is the tape, whose first
+ * row starts with a row number (`\n1 CULANTRO…`). A `\s` in the class would let
+ * the match run past the end of the amount and swallow that `1`, silently
+ * corrupting the number it is supposed to verify.
+ *
+ * This used to be `/TOTAL\s*(₡[\d,]+)/` with a `.replace(/,/g, '')`, and BOTH
+ * halves broke at once when the separator changed: the sign was dropped from the
+ * UI, and the digits were no longer comma-separated. The symptom was silent —
+ * `totalValue` came back 0, so the script's one job (confirming the tape adds up
+ * to the drawn prices) would fail every run instead of erroring.
+ */
+const TOTAL_RE = /TOTAL\s*([\d\u00A0]+)/;
+
+/** Strip grouping separators from a formatted amount so it can be parsed. */
+const ungroup = (s) => Number(s.replace(/[\s\u00A0]/g, '')) || 0;
+
 async function readState(page) {
 	const rows = await page.locator('ul > li').allInnerTexts();
 	const body = await page.locator('body').innerText();
+	const totalMatch = body.match(TOTAL_RE)?.[1] ?? null;
 	return {
 		count: rows.length,
 		newest: (rows[0] ?? '').replace(/\s+/g, ' ').trim(),
-		total: body.match(/TOTAL\s*(₡[\d,]+)/)?.[1] ?? null,
-		totalValue: Number((body.match(/TOTAL\s*₡([\d,]+)/)?.[1] ?? '0').replace(/,/g, ''))
+		total: totalMatch,
+		totalValue: ungroup(totalMatch ?? '0')
 	};
 }
 
@@ -287,13 +322,13 @@ async function main() {
 
 	const pick = shuffled(valid, random)
 		.slice(0, opts.count)
-		// One independent quantity draw per item — never reused across the run.
-		.map((row) => ({ ...row, qty: 1 + Math.floor(random() * 6) }))
+		// One independent units draw per item — never reused across the run.
+		.map((row) => ({ ...row, units: 1 + Math.floor(random() * 6) }))
 		// The app rounds the price on the way in, so the stored row (and therefore
 		// the subtotal) can differ from the raw sheet amount by a few colones.
 		.map((row) => ({ ...row, price: roundPrice(row.price) }));
 
-	const expectedTotal = pick.reduce((sum, r) => sum + r.price * r.qty, 0);
+	const expectedTotal = pick.reduce((sum, r) => sum + r.price * r.units, 0);
 
 	console.log(`\nSuperCalc dummy-data seeder`);
 	console.log(`  seed          ${seed}${opts.seed === null ? ' (random)' : ''}`);
@@ -306,7 +341,7 @@ async function main() {
 		pick.forEach((r, i) => {
 			console.log(
 				`${String(i + 1).padStart(2)}/${pick.length}  ${r.desc.padEnd(22)}  ` +
-					`${colones(r.price)} × ${r.qty} = ${colones(r.price * r.qty)}`
+					`${colones(r.price)} × ${r.units} = ${colones(r.price * r.units)}`
 			);
 		});
 		console.log(`\n--dry-run: nothing was sent to the app.\n`);
@@ -367,7 +402,7 @@ async function main() {
 
 			// The row is prepended, so the newest item is `ul > li` index 0.
 			const after = await readState(page);
-			const subtotal = row.price * row.qty;
+			const subtotal = row.price * row.units;
 			const landed = after.count === before.count + 1;
 
 			if (!landed) {
@@ -377,7 +412,7 @@ async function main() {
 
 			console.log(
 				`${String(i + 1).padStart(2)}/${pick.length}  ${row.desc.padEnd(22)}  ` +
-					`${colones(row.price)} × ${row.qty} = ${colones(subtotal)}   ` +
+					`${colones(row.price)} × ${row.units} = ${colones(subtotal)}   ` +
 					`[total ${after.total}]`
 			);
 			added++;
