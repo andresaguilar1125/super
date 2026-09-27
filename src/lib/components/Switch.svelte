@@ -17,13 +17,12 @@
 	 * reads as a colour. The knob is painted with `--accent-fg` rather than a
 	 * fixed white/zinc: that token is by definition the contrasting pair of
 	 * whatever is behind it, so one class keeps the knob visible on every accent
-	 * in both modes (white on the light-mode fills, zinc-950 on the dark-mode
-	 * ones).
+	 * in both modes (white on the light-mode fill, zinc-950 on the dark-mode one).
 	 */
-	const on = 'border-accent bg-accent';
+	const on = 'border-brand bg-brand';
 	const off = 'border-zinc-300 bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-700';
 	const knob =
-		'inline-block h-4 w-4 transform rounded-full bg-accent-fg transition-transform';
+		'inline-block h-4 w-4 transform rounded-full bg-brand-fg transition-transform';
 </script>
 
 <!--

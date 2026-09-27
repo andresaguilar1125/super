@@ -36,10 +36,9 @@
 
 		<script>
 			/*
-			 * Runs before first paint to apply the persisted theme AND accent,
-			 * eliminating the flash of light UI (and of default-blue controls) that
-			 * occurred while the layout's onMount awaited hydration.
-			 * Must stay inline and synchronous.
+			 * Runs before first paint to apply the persisted theme, eliminating the
+			 * flash of light UI that occurred while the layout's onMount awaited
+			 * hydration. Must stay inline and synchronous.
 			 */
 			(function () {
 				try {
@@ -49,19 +48,8 @@
 						stored === 'dark' ||
 						(!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
 					if (wantsDark) root.classList.add('dark');
-
-					/*
-					 * Same reasoning as the theme: the attribute has to exist before the
-					 * first paint or a saved accent flashes the default blue. The ids
-					 * must match ACCENTS in src/lib/accents.ts; an unknown value falls
-					 * through to the `:root` default — which is also what happens to
-					 * anyone still holding the removed 'gold', so they land on blue.
-					 */
-					var accents = ['blue', 'purple', 'pink', 'green', 'teal'];
-					var accent = localStorage.getItem('supercalc-accent');
-					root.dataset.accent = accents.indexOf(accent) !== -1 ? accent : 'blue';
 				} catch (e) {
-					/* Private mode / blocked storage — fall back to light + blue. */
+					/* Private mode / blocked storage — fall back to light. */
 				}
 			})();
 		</script>
@@ -72,4 +60,3 @@
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>
-

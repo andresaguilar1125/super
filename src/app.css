@@ -31,36 +31,43 @@
 	--spacing-sticky-top: calc(var(--spacing-header) + var(--spacing-totalbar));
 
 	/*
-	 * The one horizontal gap used inside the entry form — shared by the
-	 * Price|Qty row AND the Compare|+ Add Item row, so the two grids can never
-	 * disagree about their gutters.
+	 * The one horizontal gap used inside the entry form — the gutter between the
+	 * three fields of the Price · Units · Product strip. The Compare sheet's Small /
+	 * Big card grid uses it too, so the two surfaces cannot disagree about their
+	 * gutters.
 	 *
-	 * 12px, not 8px, because the `×` separator glyph is itself ~8px wide: sitting
-	 * it in an 8px gutter left it touching both field borders (0.02px clearance),
-	 * which read as no gap at all. 12px gives the glyph ~2px of breathing room on
-	 * each side. The `×` overlay is sized from this token, so changing it here
-	 * keeps the glyph centred automatically.
+	 * 12px rather than 8px is a leftover from when a `×` glyph sat in this gutter:
+	 * the glyph is ~8px wide, so at an 8px gap it touched both field borders and
+	 * read as no gap at all. The `×` is gone, but the wider gutter is kept
+	 * deliberately — three fields on one line are dense, and the extra 4px is what
+	 * stops the middle Units field from looking welded to its neighbours.
 	 */
 	--spacing-form-gap: 0.75rem;
 
 	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+	/*
+	 * Newly-added-row confirmation. Registered as a theme token so the utility
+	 * compiles to `animate-flash`; the keyframes themselves live below, outside
+	 * `@theme`. 600ms is the compromise between "did that register?" and "stop
+	 * waving at me" — at 150ms the flash is over before the eye lands on the row.
+	 */
+	--animate-flash: flash 600ms ease-out;
 }
 
 /*
- * Accent tokens. Declared `inline` so utilities compile straight to
- * `var(--accent)` rather than to a frozen value — `bg-accent` becomes literally
- * `background-color: var(--accent)`. That indirection is the whole mechanism
- * behind a runtime-switchable accent; without `inline` Tailwind would bake in
- * whatever `--accent` resolved to at build time.
+ * Brand tokens. Declared `inline` so utilities compile straight to `var(--brand)`
+ * rather than to a frozen value — `bg-brand` becomes literally
+ * `background-color: var(--brand)`. That indirection is what lets ONE token set
+ * carry different light and dark values without per-component `dark:` overrides.
  *
- * The two companions travel with it: a hover step, and a foreground colour that
- * is always the fill's contrasting pair. Having `--accent-fg` means components
- * need no per-accent `dark:` overrides of their own.
+ * There is no accent picker: the brand is a single fixed green.
  */
 @theme inline {
-	--color-accent: var(--accent);
-	--color-accent-hover: var(--accent-hover);
-	--color-accent-fg: var(--accent-fg);
+	--color-brand: var(--brand);
+	--color-brand-hover: var(--brand-hover);
+	--color-brand-fg: var(--brand-fg);
+	--color-brand-muted: var(--brand-muted);
 }
 
 @layer base {
@@ -101,6 +108,18 @@
 	}
 
 	/*
+	 * The Settings sliders use Tailwind's `accent-brand`, which resolves to
+	 * `accent-color: var(--brand)` and is honoured by Chrome and Safari.
+	 * Firefox renders the range thumb itself and ignores `accent-color`, so it
+	 * needs an explicit rule — without one the slider paints in the platform blue
+	 * beside a brand-coloured Save button.
+	 */
+	input[type='range']::-moz-range-thumb {
+		background-color: var(--brand);
+		border: 0;
+	}
+
+	/*
 	 * PWA-friendly viewport & safe-area handling.
 	 * `overscroll-behavior-y` prevents the rubber-band pull-to-refresh; the
 	 * safe-area insets keep content clear of notches and the home indicator.
@@ -128,134 +147,85 @@
 	/* Let the UA render native controls (sliders, scrollbars) in the right scheme. */
 	:root {
 		color-scheme: light;
+		/*
+		 * Endpoints of the added-row flash. `--flash-to` has to land exactly on the
+		 * tape row's own background, or the animation visibly snaps at the end;
+		 * `--flash-from` is one comfortable step away from it.
+		 */
+		--flash-from: var(--color-zinc-100);
+		--flash-to: var(--color-white);
+
+		/*
+		 * The brand colour. ONE green, fixed — the app has no accent picker.
+		 *
+		 * emerald-700, not emerald-600: emerald-600 carries white text at only
+		 * **3.67:1**, which fails AA. 700 measures **5.37:1**. (The same trap caught
+		 * the old accent palette and the category pills; measure, never assume a
+		 * "600" step is dark enough.)
+		 */
+		--brand: var(--color-emerald-700);
+		--brand-hover: var(--color-emerald-800);
+		--brand-fg: var(--color-white);
+
+		/*
+		 * Disabled brand button. A SOLID palette step (emerald-800: 7.58:1 with
+		 * white), deliberately darker than `--brand` so it reads subdued rather than
+		 * as a second live button.
+		 *
+		 * Note this replaces a `color-mix()` of the accent with a neutral. Mixing
+		 * toward a low-chroma neutral is what made every surface look washed out;
+		 * solid steps keep the colour crisp.
+		 */
+		--brand-muted: var(--color-emerald-800);
 	}
 	.dark {
 		color-scheme: dark;
-	}
+		--flash-from: var(--color-zinc-800);
+		--flash-to: var(--color-zinc-900);
 
-	/*
-	 * Accent palette. Five choices, ordered exactly like `src/lib/accents.ts`
-	 * (which drives both the Settings picker and the pre-paint script in
-	 * `src/app.html`).
-	 *
-	 * Red is deliberately absent — it stays reserved for destructive/error so a
-	 * primary button can never be mistaken for a delete. Pink is the closest
-	 * neighbour allowed: at hue ~4° it sits ~23° from red-600 (27°), whereas
-	 * rose (~17°, only ~10° away) read as a second red and reintroduced exactly
-	 * the ambiguity the rule exists to prevent. There is also no literal
-	 * "white" option: it would be invisible on a white card.
-	 *
-	 * `pink` REPLACED `gold` (amber), which was the one hue that could not be used
-	 * for TEXT while still clearing WCAG AA — amber-500 is ~2:1 on a light surface.
-	 * The accent now paints the tape's category and breakdown values, so an
-	 * unreadable-as-text hue could no longer be offered. The count is unchanged.
-	 *
-	 * Dark mode keeps the hue and steps one ramp value LIGHTER instead of
-	 * inverting to a pale tint, so the accent still reads as a colour at night.
-	 *
-	 * With gold gone there is no longer a light-and-deep split, so `--accent-fg`
-	 * follows a single uniform rule: every light-mode fill is deep enough to carry
-	 * white, and every dark-mode fill is light enough to carry zinc-950. Every
-	 * pair clears 4.5:1.
-	 *
-	 * Ordering is load-bearing. Specificity climbs 0,1,0 (`:root`) → 0,1,1
-	 * (`html[data-accent]`, `html.dark`) → 0,2,1 (`html[data-accent].dark`), so
-	 * every dark rule outranks every light rule while `html.dark` doubles as the
-	 * fallback for a missing attribute. An unrecognised `data-accent` simply
-	 * matches nothing and falls through to blue.
-	 */
+		/*
+		 * emerald-400 on zinc-950 measures 10.29:1 — bright and fresh against the
+		 * near-black chrome, and the same step the old green accent already proved.
+		 */
+		--brand: var(--color-emerald-400);
+		--brand-hover: var(--color-emerald-300);
+		--brand-fg: var(--color-zinc-950);
 
-	/* Light. Blue is also the default when no attribute has been set yet. */
-	:root,
-	html[data-accent='blue'] {
-		--accent: var(--color-blue-600);
-		--accent-hover: var(--color-blue-700);
-		--accent-fg: var(--color-white);
-	}
-
-	html[data-accent='purple'] {
-		--accent: var(--color-purple-600);
-		--accent-hover: var(--color-purple-700);
-		--accent-fg: var(--color-white);
-	}
-
-	/*
-	 * pink-700, not pink-600: pink-600 measures 4.54:1 on white — it passes AA by
-	 * four hundredths, which is no headroom at all. pink-700 is 5.90:1 and matches
-	 * the 700 step that green and teal already use in light mode.
-	 */
-	html[data-accent='pink'] {
-		--accent: var(--color-pink-700);
-		--accent-hover: var(--color-pink-800);
-		--accent-fg: var(--color-white);
-	}
-
-	html[data-accent='green'] {
-		--accent: var(--color-emerald-700);
-		--accent-hover: var(--color-emerald-800);
-		--accent-fg: var(--color-white);
-	}
-
-	html[data-accent='teal'] {
-		--accent: var(--color-teal-700);
-		--accent-hover: var(--color-teal-800);
-		--accent-fg: var(--color-white);
-	}
-
-	/*
-	 * Dark. This one rule IS blue-in-dark, so there is no separate
-	 * `html[data-accent='blue'].dark` block — it would be a duplicate, and a
-	 * duplicate is exactly the kind of thing that drifts apart later.
-	 *
-	 * `:root.dark` and not `html.dark`: the two are equivalent to a reader, but
-	 * the minifier rewrites `html.dark` to `.dark`, which silently drops the
-	 * selector's specificity from (0,2,0) to (0,1,0) — below the light rules
-	 * above at (0,1,1). The attribute is always set (the pre-paint script
-	 * defaults it to `blue`), so a demoted selector here would never win and
-	 * blue would render its light values at night. `:root` is a pseudo-class,
-	 * so it survives minification with its weight intact.
-	 */
-	:root.dark {
-		--accent: var(--color-blue-500);
-		--accent-hover: var(--color-blue-400);
-		--accent-fg: var(--color-zinc-950);
-	}
-
-	html[data-accent='purple'].dark {
-		--accent: var(--color-purple-400);
-		--accent-hover: var(--color-purple-300);
-		--accent-fg: var(--color-zinc-950);
-	}
-
-	/* pink-400 on zinc-950 = 7.21:1; the pink-300 hover step = 10.92:1. */
-	html[data-accent='pink'].dark {
-		--accent: var(--color-pink-400);
-		--accent-hover: var(--color-pink-300);
-		--accent-fg: var(--color-zinc-950);
-	}
-
-	html[data-accent='green'].dark {
-		--accent: var(--color-emerald-400);
-		--accent-hover: var(--color-emerald-300);
-		--accent-fg: var(--color-zinc-900);
-	}
-
-	html[data-accent='teal'].dark {
-		--accent: var(--color-teal-300);
-		--accent-hover: var(--color-teal-200);
-		--accent-fg: var(--color-zinc-900);
+		/*
+		 * emerald-600: 5.43:1 against zinc-950 text, and 0.169 L DARKER than the
+		 * `--brand` fill, so the disabled state is unmistakably not the live one.
+		 * (emerald-700 would fail here at 3.71:1.)
+		 */
+		--brand-muted: var(--color-emerald-600);
 	}
 
 	/*
 	 * Keyboard-only focus ring — mouse/touch interaction stays quiet.
-	 * The accent replaces the hardcoded zinc, and the `.dark :focus-visible`
-	 * override it used to need is gone: `--accent` already resolves per mode.
-	 * The 2px offset is what keeps the ring visible when it lands on a control
-	 * that is itself painted in the accent colour.
+	 * The brand colour replaces the hardcoded zinc, and no `.dark` override is
+	 * needed because `--brand` already resolves per mode. The 2px offset keeps the
+	 * ring visible even when it lands on a brand-coloured control.
 	 */
 	:focus-visible {
-		outline: 2px solid var(--accent);
+		outline: 2px solid var(--brand);
 		outline-offset: 2px;
+	}
+}
+
+/*
+ * Runs once on a newly-added tape row, so the add is confirmed without the user
+ * having to look away from the form.
+ *
+ * The global reduced-motion block below collapses `animation-duration` to
+ * 0.01ms, which neutralises this — that is the intended behaviour, and
+ * `animationend` still fires at that duration, so the consumer's cleanup never
+ * depends on the animation having been visible.
+ */
+@keyframes flash {
+	from {
+		background-color: var(--flash-from);
+	}
+	to {
+		background-color: var(--flash-to);
 	}
 }
 

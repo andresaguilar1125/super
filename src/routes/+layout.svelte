@@ -3,16 +3,18 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
-	import { theme, hydrateStores, subtotal, formatCurrency, toggleTheme, accent, calculatorRows, totalsByCategory } from '$lib/store';
+	import { theme, hydrateStores, subtotal, formatCurrency, toggleTheme, calculatorRows, totalsByCategory } from '$lib/store';
 	import { hydrateCategories, ensureCategoriesLoaded } from '$lib/categories';
 	import IconButton from '$lib/components/IconButton.svelte';
 	import CategoryTotalsSheet from '$lib/components/CategoryTotalsSheet.svelte';
+	import CompareSheet from '$lib/components/CompareSheet.svelte';
 	import PwaRegister from '$lib/components/PwaRegister.svelte';
 
 	// Sheet state lives here rather than in the store: it is transient UI with no
 	// reason to survive a reload, and the only two things that touch it (the strip
 	// trigger and the sheet itself) are both rendered from this file.
 	let showTotals = false;
+	let showCompare = false;
 
 	onMount(() => {
 		hydrateStores();
@@ -24,25 +26,17 @@
 
 	// The header is shared across routes, so the top-left affordance, the total
 	// strip, and the sticky offsets are all driven by the current path.
-	// `/compare` and `/settings` are drill-downs: they get a back button and no
-	// total strip (only the calculator has a running tape to total).
+	// `/settings` is the only drill-down left: it gets a back button and no total
+	// strip (only the calculator has a running tape to total). Compare used to be a
+	// route too, and is a sheet now, so it is no longer a sub-page.
 	$: path = $page.url.pathname;
-	$: isSubPage = path.startsWith('/compare') || path.startsWith('/settings');
+	$: isSubPage = path.startsWith('/settings');
 	$: showTotal = !isSubPage;
 
 	// React to theme changes: flip the `dark` class on <html>.
 	// Guarded for SSR where `document` doesn't exist.
 	$: if (typeof document !== 'undefined') {
 		document.documentElement.classList.toggle('dark', $theme === 'dark');
-	}
-
-	// Accent travels the same way — an attribute on <html> rather than classes on
-	// individual elements, so one token swap repaints every consumer at once.
-	// The pre-paint script in app.html already set the initial value; this keeps
-	// it in sync afterwards. `dataset.accent` reflects an unknown value harmlessly
-	// (it simply matches no token block and falls back to blue).
-	$: if (typeof document !== 'undefined') {
-		document.documentElement.dataset.accent = $accent;
 	}
 </script>
 
@@ -108,6 +102,34 @@
 			<!-- Centered running total removed — it now has its own strip below. -->
 
 			<div class="flex items-center gap-1">
+				<!--
+					Compare opens a SHEET rather than navigating. It used to be a route, which
+					meant the header needed a back button and had to hide the running total just
+					to get you home again. As a sheet the tape stays put behind it, and there is
+					no route to link back to.
+
+					It sits with the other header controls rather than in the calculator's
+					entry form: that form's bottom row existed only to pair Compare with
+					`+ Add Item`, and once the add action became a floating button the pairing
+					had nothing left to align to.
+				-->
+				<button
+					type="button"
+					aria-label="Compare prices"
+					title="Compare prices"
+					on:click={() => (showCompare = true)}
+					class="inline-flex h-11 w-11 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+				>
+					<!-- Material Symbols `compare_arrows` (same path data @mui/icons-material
+					     CompareArrows renders). Inlined because this project ships no icon
+					     package — every glyph is a hand-rolled SVG. Filled, not stroked: the
+					     Material path is authored for fill, and stroking it would fatten the
+					     arrow heads. -->
+					<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M9.01 14H2v2h7.01v3L13 15l-3.99-4v3zm5.98-1v-3H22V8h-7.01V5L11 9l3.99 4z" />
+					</svg>
+				</button>
+
 				<IconButton label="Toggle theme" on:click={toggleTheme}>
 					{#if $theme === 'light'}
 						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -186,8 +208,13 @@
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
 					</svg>
 				</button>
+				<!--
+					The amount renders bare — no `₡`. The currency is established by the
+					app's own identity and by Settings, so repeating the sign on every
+					figure was decoration that competed with the digits for the eye.
+				-->
 				<span class="text-lg font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-100">
-					₡{formatCurrency($subtotal)}
+					{formatCurrency($subtotal)}
 				</span>
 			</div>
 		</div>
@@ -207,4 +234,10 @@
 		the header as intended.
 	-->
 	<CategoryTotalsSheet bind:open={showTotals} totals={$totalsByCategory} total={$subtotal} />
+
+	<!--
+		Same rule as the totals sheet: a sibling of <main>, mounted where no ancestor
+		has a z-index, so the `fixed` panel's own `z-40` applies against the header.
+	-->
+	<CompareSheet bind:open={showCompare} />
 </div>

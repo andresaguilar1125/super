@@ -5,14 +5,13 @@
 	 * Flat, border-driven button. Shadows are intentionally absent — elevation
 	 * is communicated with borders and background shifts only.
 	 *
-	 * The `solid` variant — and only that one — wears the selectable accent, so
-	 * the primary action of each screen is the single place the user's colour
-	 * choice shows up most strongly. `destructive` and `destructive-soft` stay
-	 * hardcoded red regardless of accent: that colour is a warning, not a theme.
+	 * The `solid` variant wears the single brand green, so the primary action of
+	 * each screen is the one place a saturated colour appears. `destructive` and
+	 * `destructive-soft` stay hardcoded red regardless: that colour is a warning,
+	 * not a theme.
 	 *
-	 * `text-accent-fg` supplies the contrasting pair (white on every light-mode
-	 * fill, zinc-950 on every dark-mode one), which is why this needs no `dark:`
-	 * overrides of its own.
+	 * `text-brand-fg` supplies the contrasting pair (white on the light fill,
+	 * zinc-950 on the dark one), which is why this needs no `dark:` overrides.
 	 */
 	type Variant = 'solid' | 'outline' | 'ghost' | 'destructive' | 'destructive-soft';
 	type Size = 'sm' | 'md' | 'lg';
@@ -34,7 +33,7 @@
 
 	const variants: Record<Variant, string> = {
 		solid:
-			'bg-accent text-accent-fg hover:bg-accent-hover active:bg-accent-hover',
+			'bg-brand text-brand-fg hover:bg-brand-hover active:bg-brand-hover',
 		outline:
 			'border border-zinc-300 bg-transparent text-zinc-900 hover:bg-zinc-100 ' +
 			'dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800',

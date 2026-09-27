@@ -1,7 +1,13 @@
 export interface CalculatorRow {
 	id: string;
 	price: number;
-	quantity: number;
+	/**
+	 * How many of the item were bought. Called `units` rather than `quantity` so
+	 * the field, the Settings cap and the UI label all use one word — the label has
+	 * read "Units" since the rename, and a `quantity` identifier behind a "Units"
+	 * label is the kind of drift that makes a codebase read as two vocabularies.
+	 */
+	units: number;
 	category: string;
 	/** Optional free-text item name (e.g. "Leche Dos Pinos 1L"). */
 	label?: string;
@@ -10,8 +16,11 @@ export interface CalculatorRow {
 }
 
 export interface Settings {
+	/** Reject prices below this. Guards against a mistyped single digit. */
+	minPrice: number;
 	maxPrice: number;
-	maxQuantity: number;
+	/** Reject unit counts above this — the "Max Units" slider in Settings. */
+	maxUnits: number;
 	rememberTheme: boolean;
 }
 
@@ -41,16 +50,3 @@ export interface CompareEntry {
 
 export type Theme = 'light' | 'dark';
 
-/**
- * Selectable accent colour. Red is intentionally excluded (reserved for
- * destructive/error), and the palette deliberately has no literal "white"
- * option — it would be invisible on a white card.
- *
- * `pink` replaced `gold`: amber is the one hue in the palette that fails WCAG AA
- * as TEXT on a light surface (amber-500 is ~2:1 on white), and the calculator
- * tape now paints its category and breakdown values in the accent. Pink was
- * chosen over rose because rose sits only ~10° from red-600, which made a
- * primary button ambiguous with a destructive one.
- * Keep in sync with the token blocks in `src/app.css`.
- */
-export type Accent = 'blue' | 'purple' | 'pink' | 'green' | 'teal';
