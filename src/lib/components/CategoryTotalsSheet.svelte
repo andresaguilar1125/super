@@ -9,7 +9,7 @@
 	 * A sheet rather than the alternatives that were considered:
 	 * - a stacked bar in the total strip is not descriptive (an unlabelled
 	 *   sliver tells you nothing) and needs a colour per category, which would
-	 *   fight the palette and fail AA for most hues;
+	 *   fight the palette;
 	 * - charts mean a dependency that the flat, border-driven design language
 	 *   and the 32-entry service-worker precache would both pay for;
 	 * - pills scroll sideways forever and cannot carry a value per category;
@@ -136,7 +136,7 @@
 									{row.category}
 								</span>
 								<span class="shrink-0 text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
-									<span class="text-zinc-400 dark:text-zinc-600">₡</span>{formatCurrency(row.subtotal)}
+									{formatCurrency(row.subtotal)}
 								</span>
 							</div>
 
@@ -147,13 +147,17 @@
 										data, and an arbitrary value like `w-[37%]` is never generated
 										because Tailwind only sees literal source text at build time.
 									-->
-									<div class="h-full rounded-full bg-accent" style="width: {row.share}%"></div>
+									<!-- `bg-brand`, not `bg-accent`: the accent system was removed in
+									     favour of a single brand green, and `--color-accent` no longer
+									     exists — so this bar was resolving to nothing and rendered
+									     invisible. -->
+									<div class="h-full rounded-full bg-brand" style="width: {row.share}%"></div>
 								</div>
 
 								<span
 									class="w-28 shrink-0 text-right text-xs tabular-nums text-zinc-500 dark:text-zinc-400"
 								>
-									{row.share.toFixed(0)}% · {row.itemCount}{row.itemCount === 1 ? ' item' : ' items'}
+									{row.share.toFixed(0)}% · {row.unitCount}{row.unitCount === 1 ? ' unit' : ' units'}
 								</span>
 							</div>
 						</li>
@@ -165,7 +169,7 @@
 						Total
 					</span>
 					<span class="text-base font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
-						₡{formatCurrency(total)}
+					{formatCurrency(total)}
 					</span>
 				</div>
 			{/if}
