@@ -36,10 +36,9 @@
 
 		<script>
 			/*
-			 * Runs before first paint to apply the persisted theme AND accent,
-			 * eliminating the flash of light UI (and of default-blue controls) that
-			 * occurred while the layout's onMount awaited hydration.
-			 * Must stay inline and synchronous.
+			 * Runs before first paint to apply the persisted theme, eliminating the
+			 * flash of light UI that occurred while the layout's onMount awaited
+			 * hydration. Must stay inline and synchronous.
 			 */
 			(function () {
 				try {
@@ -49,43 +48,32 @@
 						stored === 'dark' ||
 						(!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
 					if (wantsDark) root.classList.add('dark');
-
-					/*
-					 * Same reasoning as the theme: the attribute has to exist before the
-					 * first paint or a saved accent flashes the default blue. The ids
-					 * must match ACCENTS in src/lib/accents.ts; an unknown value falls
-					 * through to the `:root` default — which is also what happens to
-					 * anyone still holding the removed 'gold', so they land on blue.
-					 */
-					var accents = ['blue', 'purple', 'pink', 'green', 'teal'];
-					var accent = localStorage.getItem('supercalc-accent');
-					root.dataset.accent = accents.indexOf(accent) !== -1 ? accent : 'blue';
 				} catch (e) {
-					/* Private mode / blocked storage — fall back to light + blue. */
+					/* Private mode / blocked storage — fall back to light. */
 				}
 			})();
 		</script>
 
-		<link href="/super/_app/immutable/entry/start.B-wB9M6o.js" rel="modulepreload">
-		<link href="/super/_app/immutable/chunks/DNeNbMVT.js" rel="modulepreload">
-		<link href="/super/_app/immutable/chunks/OPkkAcBP.js" rel="modulepreload">
-		<link href="/super/_app/immutable/chunks/DSIRIJBg.js" rel="modulepreload">
-		<link href="/super/_app/immutable/chunks/BLMJf9Vq.js" rel="modulepreload">
-		<link href="/super/_app/immutable/entry/app.BDEmIFkl.js" rel="modulepreload">
+		<link href="/super/_app/immutable/entry/start.C21WaLCo.js" rel="modulepreload">
+		<link href="/super/_app/immutable/chunks/CoI-BIE_.js" rel="modulepreload">
+		<link href="/super/_app/immutable/chunks/C8wGrnM0.js" rel="modulepreload">
+		<link href="/super/_app/immutable/chunks/CHyoTzub.js" rel="modulepreload">
+		<link href="/super/_app/immutable/entry/app.BnlbHqmZ.js" rel="modulepreload">
 		<link href="/super/_app/immutable/chunks/C1FmrZbK.js" rel="modulepreload">
-		<link href="/super/_app/immutable/chunks/3cpyxNta.js" rel="modulepreload">
-		<link href="/super/_app/immutable/nodes/0.CMcUzs3s.js" rel="modulepreload">
-		<link href="/super/_app/immutable/chunks/vKSDm2EU.js" rel="modulepreload">
-		<link href="/super/_app/immutable/chunks/hbRC-EBR.js" rel="modulepreload">
-		<link href="/super/_app/immutable/chunks/q7rhgt59.js" rel="modulepreload">
+		<link href="/super/_app/immutable/chunks/B1tfMUFb.js" rel="modulepreload">
+		<link href="/super/_app/immutable/nodes/0.f5ZkusYd.js" rel="modulepreload">
+		<link href="/super/_app/immutable/chunks/Bw9uG0gk.js" rel="modulepreload">
+		<link href="/super/_app/immutable/chunks/CSzG4u7a.js" rel="modulepreload">
+		<link href="/super/_app/immutable/chunks/foTDl3Ld.js" rel="modulepreload">
+		<link href="/super/_app/immutable/chunks/B4LhFVu8.js" rel="modulepreload">
 		
-		<link href="/super/_app/immutable/assets/0.CeX_y3el.css" rel="stylesheet">
+		<link href="/super/_app/immutable/assets/0.D3P12f6F.css" rel="stylesheet">
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">
 			<script>
 				{
-					__sveltekit_3njg44 = {
+					__sveltekit_8d0q2i = {
 						base: "/super",
 						assets: "/super"
 					};
@@ -93,8 +81,8 @@
 					const element = document.currentScript.parentElement;
 
 					Promise.all([
-						import("/super/_app/immutable/entry/start.B-wB9M6o.js"),
-						import("/super/_app/immutable/entry/app.BDEmIFkl.js")
+						import("/super/_app/immutable/entry/start.C21WaLCo.js"),
+						import("/super/_app/immutable/entry/app.BnlbHqmZ.js")
 					]).then(([kit, app]) => {
 						kit.start(app, element);
 					});
@@ -103,4 +91,3 @@
 		</div>
 	</body>
 </html>
-
