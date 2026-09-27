@@ -1,0 +1,71 @@
+This is a remarkably well-engineered project. The README and code comments show a level of care (WCAG contrast verification, stacking-context reasoning, service-worker precache details) far beyond a typical "simple mobile app." My earlier feedback was based only on the rendered page; with the source, most of it is already addressed. Here is what I'd actually change, ranked by impact.
+
+## What's already excellent (don't touch)
+- The sticky geometry with `--spacing-sticky-top` derived from tokens.
+- The 50/50 Price|Qty grid with the `×` absolutely positioned in the gutter.
+- The accent system (inline tokens, `--accent-fg` contrast pair, pre-paint script).
+- The offline-first CSV cache with manual refresh and failure preservation.
+- The accessibility work: `role="switch"`, `aria-invalid`, `aria-live`-adjacent focus rings, 44px targets, reduced-motion.
+
+## High-impact changes
+
+**1. Add a running total / item count to the manifest `start_url` flow**
+The app opens straight into `/calculator` which is correct, but the empty state's only affordance is "Add your first item above." Make that phrase a real button that focuses `#price-input`, and if categories are empty, show a single "Load defaults" that calls `refreshCategories()` directly instead of sending users to Settings.
+
+**2. The `+ Add Item` / `Compare` row competes with the sticky form**
+The form is sticky, but the action buttons inside it scroll with it. On a long tape, the user's thumb reaches the bottom of the screen, not the top. Consider moving `+ Add Item` to a fixed FAB at the bottom-right, and keeping the sticky form for the fields only. This is the single biggest mobile ergonomics win.
+
+**3. `confirm()` for delete is inconsistent with the app's own two-tap pattern**
+`handleDelete` uses the native `confirm()` dialog. Everywhere else (Reset, Wipe) uses the inline two-tap "Tap again to confirm" pattern. Native `confirm()` blocks the main thread, looks out of place in a PWA, and can't be styled. Switch deletes to either:
+- an inline two-tap on the delete icon, or
+- a small undo toast ("Deleted Leche · Undo") which is more forgiving.
+
+**4. No export — explicitly listed as a known gap**
+A shopping trip's tape is exactly the kind of thing people want to screenshot or copy. Add a "Share" / "Copy as text" action in the total strip or a small menu, producing something like:
+```
+SuperCalc — 12 items
+₡34,560
+- 2 × Leche Delactomy ₡1,440 = ₡2,880
+...
+```
+`navigator.share()` on mobile, `navigator.clipboard` fallback.
+
+**5. Category totals are hidden behind a chevron**
+The `Total` label with a chevron is a good compromise, but the breakdown is arguably the most valuable information after the total. Consider showing the top 1–2 categories inline in the strip (e.g., "Total ₡34,560 · Lácteos ₡8,200") and expanding to the full sheet on tap. This gives at-a-glance information without opening anything.
+
+## Medium-impact
+
+**6. `validateCompareQty` allows 4 digits but `maxlength={6}` on pack price**
+This is intentional per the README, but the asymmetry (`5` vs `6` digits) is a subtle trap. If you keep it, add a comment in the UI or a tooltip explaining why the pack price allows more digits. Alternatively, raise the calculator's price cap to match.
+
+**7. The `datalist` type-ahead is unreliable on iOS Safari**
+Native `<datalist>` support on iOS is spotty (it often doesn't render a dropdown at all). Since the sheet categories depend on picking a suggestion, iOS users may never get categories resolved. Consider a lightweight custom combobox (the sheet is small enough) or at least document the limitation.
+
+**8. `roundPrice` on blur but not on input**
+The price snaps to the nearest 5 on blur. If a user types `1234` and immediately hits Enter, `validatePrice` accepts it and `addRow` calls `roundPrice` — so the row is rounded. Good. But the input still shows `1234` until blur. Consider rounding visibly on Enter/add too, or just accept that the tape is the source of truth.
+
+**9. No visual feedback when an item is added**
+`handleAdd` resets the fields and refocuses price. There's no animation or brief highlight on the new row. A 150ms background flash on the prepended row would confirm the add without needing to look at the tape.
+
+**10. The empty-state copy is passive**
+"No items yet / Add your first item above" describes rather than invites. Replace with a single button: "Add your first item" that focuses the price field. Same for the "No labels loaded yet" message — make "Settings" a button that triggers `refreshCategories()` inline.
+
+## Low-impact / polish
+
+**11. `manifest.webmanifest` uses `lang: "es-CR"` but the UI is English**
+The README explains the `lang="en"` on `<html>` is deliberate because the UI copy is English. The manifest's `lang` should match the *app* language, not the locale. Change to `"lang": "en"` for consistency, or localize the UI.
+
+**12. Service worker `skipWaiting: true` + `clientsClaim: true` can interrupt a shopping session**
+If a new deploy lands while the user is mid-trip, the SW takes over and reloads. For a grocery app this is low-risk, but `registerType: 'autoUpdate'` combined with `skipWaiting` means an in-progress tape (already persisted to localStorage) is safe, but the scroll position and open sheets are not. Consider prompting "Update available — reload?" instead of forcing it.
+
+**13. `--spacing-form-gap: 0.75rem` is tuned for the `×` glyph**
+The README documents this well, but it's fragile: if the font changes, the glyph width changes, and the 12px gap may no longer give 2px clearance. Consider making the `×` a fixed-width element (e.g., `w-3 text-center`) so the gap is independent of the font metric.
+
+**14. `input[type=range]` uses `accent-accent`**
+This is a Tailwind utility mapping to `accent-color: var(--accent)`, which is correct. But on Firefox the track/thumb styling of range inputs varies. A quick `::-moz-range-thumb` rule using `--accent` would make it consistent.
+
+**15. `formatCurrency` uses `en-US` locale**
+The README says thousands separator is always `,` via `en-US` formatting. That's fine and consistent. But `toLocaleString('es-CR')` in `compare/+page.svelte` for `formatUnit` uses a different locale — so the compare screen and the calculator format numbers differently (e.g., `1.234,56` vs `1,234.56`). This is a real inconsistency. Pick one: if CRC convention is dots for thousands, use `es-CR` everywhere; if the app deliberately uses `en-US` for CRC (which is common in CR for digital displays), use it everywhere.
+
+## The one thing I'd change first
+**Export/copy the tape.** It's the only feature gap that a real shopper would hit on every trip, and it's a small amount of code given the existing `formatCurrency` helper and the tape's data shape. Everything else is polish on an already-excellent foundation.
