@@ -145,8 +145,8 @@ export function resolveCategoryFrom(
 export interface CategoryTotal {
 	category: string;
 	subtotal: number;
-	/** Sum of quantities, not the number of rows. */
-	itemCount: number;
+	/** Sum of units, not the number of rows. */
+	unitCount: number;
 	/** Percentage of the non-error tape total; 0 when the tape has no money. */
 	share: number;
 }
@@ -156,7 +156,7 @@ export interface CategoryTotal {
  *
  * Rows carrying an `error` are skipped entirely rather than counted as zero:
  * including them would surface a category whose every item failed to price,
- * and would also inflate its `itemCount` with items that never added money.
+ * and would also inflate its `unitCount` with items that never added money.
  *
  * `share` is computed against the SUM OF THE SURVIVING ROWS rather than against
  * the tape's headline subtotal. Those two agree today because `subtotal` in
@@ -166,7 +166,7 @@ export interface CategoryTotal {
  * Pure and store-free, so it stays unit-testable.
  */
 export function categoryTotals(rows: CalculatorRow[]): CategoryTotal[] {
-	const byCategory = new Map<string, { subtotal: number; itemCount: number }>();
+	const byCategory = new Map<string, { subtotal: number; unitCount: number }>();
 
 	for (const row of rows) {
 		if (row.error) continue;
@@ -174,10 +174,10 @@ export function categoryTotals(rows: CalculatorRow[]): CategoryTotal[] {
 		// A blank category still has to land somewhere visible, and `Otros` is the
 		// same fallback `resolveCategory()` uses for an unresolvable label.
 		const key = row.category || DEFAULT_CATEGORY;
-		const bucket = byCategory.get(key) ?? { subtotal: 0, itemCount: 0 };
+		const bucket = byCategory.get(key) ?? { subtotal: 0, unitCount: 0 };
 
 		bucket.subtotal += row.subtotal;
-		bucket.itemCount += row.quantity;
+		bucket.unitCount += row.units;
 		byCategory.set(key, bucket);
 	}
 
@@ -187,7 +187,7 @@ export function categoryTotals(rows: CalculatorRow[]): CategoryTotal[] {
 		.map(([category, bucket]) => ({
 			category,
 			subtotal: bucket.subtotal,
-			itemCount: bucket.itemCount,
+			unitCount: bucket.unitCount,
 			share: total > 0 ? (bucket.subtotal / total) * 100 : 0
 		}))
 		.sort((a, b) => b.subtotal - a.subtotal);
@@ -204,6 +204,67 @@ export function roundPrice(value: number): number {
 	return Math.round(value / 5) * 5;
 }
 
+/**
+ * Locale used for every number the user sees.
+ *
+ * `es-CR` is the right locale for the GROUPING — ICU defines its thousands
+ * separator as a no-break space, so `4560` renders as `4 560`. That matches how
+ * colones are written in Costa Rica, and the no-break space matters in the narrow
+ * comparison cards: a plain space would let an amount wrap mid-number.
+ *
+ * It is deliberately NOT used for the DECIMAL mark. `es-CR` also uses a comma for
+ * decimals (`1 234,57`), and this app keeps the dot (`1 234.57`) for consistency
+ * with the input fields and the rest of the UI copy. See `formatAmount()` for the
+ * one place that swap happens, and for why it is a documented deviation rather
+ * than a locale bug.
+ */
+export const NUMBER_LOCALE = 'es-CR';
+
+/**
+ * Format a number for display: `es-CR` grouping, dot decimals.
+ *
+ * The two callers need opposite shapes, which is why this is one helper with a
+ * precision argument rather than two functions:
+ *
+ * - **Money** (`maxFractionDigits: 0`, the default) rounds to an integer, because
+ *   CRC has no cents in everyday grocery math — `4560` → `4 560`.
+ * - **Unit prices** (`maxFractionDigits: 2`) keep up to two decimals, because a
+ *   price per gram is almost never a whole colón — `1234.567` → `1 234.57`.
+ *
+ * Why not `toLocaleString('es-CR')` outright: it renders the decimal comma as
+ * `,`, which would make the compare screen read `1 234,57` beside input fields
+ * that only ever accept a dot. Rather than carry two locale strings that disagree
+ * (`en-US` groups with `,`, `es-CR` decimals with `,` — the combination we want
+ * exists in neither), the grouping comes from the locale and the decimal mark is
+ * swapped afterwards. The swap is only ever applied when decimals are requested,
+ * so integer output is untouched.
+ *
+ * Pure and store-free, so it stays unit-testable alongside `roundPrice()`.
+ */
+export function formatAmount(value: number, maxFractionDigits = 0): string {
+	const safe = Number.isFinite(value) ? value : 0;
+
+	// Round for money so a stray float can never render as `4 560,0000001`. The
+	// unit-price path rounds via `maximumFractionDigits` inside `toLocaleString`.
+	const n = maxFractionDigits === 0 ? Math.round(safe) : safe;
+
+	const out = n.toLocaleString(NUMBER_LOCALE, {
+		minimumFractionDigits: 0,
+		maximumFractionDigits: maxFractionDigits
+	});
+
+	if (maxFractionDigits === 0) return out;
+
+	// Swap the decimal comma for a dot. `lastIndexOf` picks the decimal mark even
+	// if the grouping separator were ever a comma too (the decimal is always the
+	// LAST separator) — with `es-CR` the grouping is a no-break space, so the only
+	// comma present is the decimal one. The `-1` guard covers an integer that
+	// rendered no decimals at all: `out` is then returned untouched.
+	const lastComma = out.lastIndexOf(',');
+	if (lastComma === -1) return out;
+	return out.slice(0, lastComma) + '.' + out.slice(lastComma + 1);
+}
+
 /** Strip everything except digits, then parse. */
 export function digitsToInt(input: string): number {
 	const digits = input.replace(/\D/g, '');
@@ -213,53 +274,130 @@ export function digitsToInt(input: string): number {
 
 /**
  * Validate a raw price input string.
- * Rules: digits only, > 0, max 5 digits, <= maxPrice.
+ * Rules: digits only, >= minPrice, max 5 digits, <= maxPrice.
+ *
+ * The floor is not cosmetic. Without it a mistyped `1` became a ₡1 line on the
+ * tape and silently skewed the running total — and, because `roundPrice()`
+ * leaves anything under ₡10 alone, it also survived the rounding pass intact.
+ *
+ * The default floor of ₡5 is chosen against the real dataset: the cheapest item
+ * actually bought in `scripts/data.csv` is ₡90 (CULANTRO), so a floor of ₡5
+ * cannot reject a legitimate entry while still blocking accidental single-digit
+ * slips. Anything larger starts to become a policy decision rather than a guard.
  */
 export function validatePrice(
 	raw: string,
+	minPrice: number,
 	maxPrice: number
 ): { ok: boolean; value: number; reason?: string } {
 	const digits = raw.replace(/\D/g, '');
 	if (digits.length === 0) return { ok: false, value: 0, reason: 'Price required' };
 	if (digits.length > 5) return { ok: false, value: 0, reason: 'Max 5 digits' };
 	const value = parseInt(digits, 10);
-	if (value <= 0) return { ok: false, value: 0, reason: 'Price must be > 0' };
+	if (value < minPrice) return { ok: false, value, reason: `Min ₡${minPrice}` };
 	if (value > maxPrice) return { ok: false, value, reason: `Max ₡${maxPrice}` };
 	return { ok: true, value };
 }
 
 /**
- * Validate a raw quantity input string.
- * Rules: digits only, > 0, max 2 digits, <= maxQuantity.
+ * Validate a raw units input string.
+ * Rules: digits only, > 0, max 2 digits, <= maxUnits.
+ *
+ * An EMPTY field means **1**, not an error. Units is a multiplier that is 1 for
+ * the overwhelming majority of entries, so the field ships empty and `1` is what
+ * its absence implies — the placeholder says as much. Prefilling a literal `1`
+ * would mean every item required clearing a digit you did not want before typing
+ * the one you did.
+ *
+ * The distinction that matters: empty is `1`, but an explicit `0` is still
+ * rejected below. Empty is the user saying nothing; `0` is the user saying zero,
+ * and a free item is not something this tape can express.
  */
-export function validateQuantity(
+export function validateUnits(
 	raw: string,
-	maxQuantity: number
+	maxUnits: number
 ): { ok: boolean; value: number; reason?: string } {
 	const digits = raw.replace(/\D/g, '');
-	if (digits.length === 0) return { ok: false, value: 0, reason: 'Quantity required' };
+	if (digits.length === 0) return { ok: true, value: 1 };
 	if (digits.length > 2) return { ok: false, value: 0, reason: 'Max 2 digits' };
 	const value = parseInt(digits, 10);
-	if (value <= 0) return { ok: false, value: 0, reason: 'Quantity must be > 0' };
-	if (value > maxQuantity) return { ok: false, value, reason: `Max ${maxQuantity}` };
+	if (value <= 0) return { ok: false, value: 0, reason: 'Units must be > 0' };
+	if (value > maxUnits) return { ok: false, value, reason: `Max ${maxUnits}` };
 	return { ok: true, value };
 }
 
 /**
- * Validate a raw quantity used as the compare page's divisor — the "Qty" field
- * on each of the Single and Pack cards.
+ * Largest units value still read as a COUNT of items.
  *
- * Deliberately simpler than `validateQuantity`: the compare page is a one-off
- * calculation rather than a tape entry, so it has no Max Quantity setting to
+ * The compare sheet takes a single unitless divisor, and the user otherwise had
+ * to remember that `400` meant grams while `4` meant units. Inferring the unit
+ * removes that mental bookkeeping.
+ *
+ * 25 is the cut-off because it is the point where a count stops being plausible
+ * for the things this app compares: nobody buys 26 cans of soda or 26 tins of
+ * tuna as a single line, whereas 4 cans or 10 eggs are ordinary. Anything above
+ * 25 is therefore read as a measure — grams or millilitres, which the app treats
+ * as interchangeable (1 g == 1 ml), exactly as the divisor already did.
+ *
+ * Kept as one named constant so the threshold can be retuned without hunting
+ * through the UI, and exported so tests can assert against the boundary rather
+ * than duplicating the number.
+ */
+export const COUNT_MAX = 25;
+
+/** Inferred kind for a compare divisor. */
+export type UnitKind = 'count' | 'measure';
+
+/**
+ * Infer whether a compare divisor is a count of items or a weight/volume measure.
+ * See `COUNT_MAX` for why the threshold sits where it does.
+ */
+export function inferUnitKind(value: number): UnitKind {
+	return value <= COUNT_MAX ? 'count' : 'measure';
+}
+
+/** Human label for the inferred kind, e.g. next to a per-unit price. */
+export function unitKindLabel(kind: UnitKind): string {
+	return kind === 'count' ? 'unit' : 'gram or ml';
+}
+
+/**
+ * Label for a compare sheet divisor field, swapping at the `COUNT_MAX` boundary.
+ *
+ * The unit used to be echoed in a paragraph UNDER the field, beneath a label that
+ * always read "Units". That put the answer in two places at once and, above the
+ * threshold, printed the same phrase twice in one card — the bare unit on its own
+ * line and then `per gram or ml` on the next.
+ *
+ * The label above the field is the right home for it: that is the text you are
+ * already reading when you decide what to type, so the field declares up front
+ * whether its number is a count or a measure instead of confirming it afterwards.
+ * One statement, in the place you look first, and nothing repeated below.
+ *
+ * Fed the PARSED value, so an empty or invalid field falls back to the neutral
+ * "Units" rather than guessing a kind from nothing.
+ */
+export function unitFieldLabel(value: number): string {
+	return value > COUNT_MAX ? 'Grams or ml' : 'Units';
+}
+
+/**
+ * Validate a raw value used as the compare sheet's divisor — the "Units" field
+ * on each of the Small and Big cards.
+ *
+ * Deliberately simpler than `validateUnits`: the compare sheet is a one-off
+ * calculation rather than a tape entry, so it has no Max Units setting to
  * enforce. The rules are digits only, at most 4 digits, and at least 1.
  *
  * The 4-digit ceiling is what makes gram-scale values usable — 2 digits would
  * reject a 400 g beer or an 850 g pack. The value is unitless by design: grams
  * and millilitres are treated as interchangeable, so there is no unit to track.
+ * The kind the UI DISPLAYS is inferred separately by `inferUnitKind()`; this
+ * validator only decides whether the number is usable.
  */
-export function validateCompareQty(raw: string): { ok: boolean; value: number; reason?: string } {
+export function validateCompareUnits(raw: string): { ok: boolean; value: number; reason?: string } {
 	const digits = raw.replace(/\D/g, '');
-	if (digits.length === 0) return { ok: false, value: 0, reason: 'Enter a Qty' };
+	if (digits.length === 0) return { ok: false, value: 0, reason: 'Enter units' };
 	if (digits.length > 4) return { ok: false, value: 0, reason: 'Max 4 digits' };
 	const value = parseInt(digits, 10);
 	if (value < 1) return { ok: false, value: 0, reason: 'Must be 1 or more' };
@@ -276,9 +414,9 @@ export function validateCompareQty(raw: string): { ok: boolean; value: number; r
  */
 export function compareUnitPrices(input: {
 	singlePrice: number;
-	singleQty: number;
+	singleUnits: number;
 	packPrice: number;
-	packQty: number;
+	packUnits: number;
 }): {
 	singleUnitPrice: number;
 	packUnitPrice: number;
@@ -287,11 +425,11 @@ export function compareUnitPrices(input: {
 	savingsPercent: number;
 	hasResults: boolean;
 } {
-	const singleQty = Math.max(1, Math.floor(input.singleQty) || 1);
-	const packQty = Math.max(1, Math.floor(input.packQty) || 1);
+	const singleUnits = Math.max(1, Math.floor(input.singleUnits) || 1);
+	const packUnits = Math.max(1, Math.floor(input.packUnits) || 1);
 
-	const singleUnitPrice = input.singlePrice > 0 ? input.singlePrice / singleQty : 0;
-	const packUnitPrice = input.packPrice > 0 ? input.packPrice / packQty : 0;
+	const singleUnitPrice = input.singlePrice > 0 ? input.singlePrice / singleUnits : 0;
+	const packUnitPrice = input.packPrice > 0 ? input.packPrice / packUnits : 0;
 	const hasResults = singleUnitPrice > 0 && packUnitPrice > 0;
 
 	if (!hasResults) {
